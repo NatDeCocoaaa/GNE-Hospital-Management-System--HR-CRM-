@@ -1,0 +1,173 @@
+-- ==========================================================
+-- HOSPITAL MANAGEMENT SYSTEM
+-- ==========================================================
+
+SET FOREIGN_KEY_CHECKS = 0;
+DROP DATABASE IF EXISTS hr_pms_erp;
+CREATE DATABASE hr_pms_erp;
+USE hr_pms_erp;
+SET FOREIGN_KEY_CHECKS = 1;
+
+-- ==========================================
+-- I. HUMAN RESOURCES & ACCESS
+-- ==========================================
+
+CREATE TABLE departments (
+    dept_id INT PRIMARY KEY AUTO_INCREMENT,
+    dept_name VARCHAR(100) NOT NULL
+) ENGINE=InnoDB;
+
+INSERT INTO `departments` (`dept_name`) VALUES 
+('Human Resources'), ('Internal Medicine'), ('Front Desk'), ('Pediatrics'), ('Emergency');
+
+CREATE TABLE employees (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    -- Custom Formatted ID: EMP-001
+    emp_id_display VARCHAR(15) GENERATED ALWAYS AS (CONCAT('EMP-', LPAD(id, 3, '0'))) VIRTUAL, 
+    first_name VARCHAR(50) NOT NULL,
+    middle_name VARCHAR(50) NULL,
+    last_name VARCHAR(50) NOT NULL,
+    role ENUM('HR', 'Doctor', 'FrontDesk') NOT NULL,
+    prc_license_no VARCHAR(20) UNIQUE, -- PH Doctor Requirement
+    hire_date DATE NOT NULL,
+    dept_id INT,
+    email VARCHAR(100) NOT NULL UNIQUE,
+    contact_no VARCHAR(15) NOT NULL,
+    address VARCHAR(200) NOT NULL,
+    status ENUM('Active', 'On-Leave', 'Resigned') DEFAULT 'Active',
+    CONSTRAINT fk_employee_dept FOREIGN KEY (dept_id) REFERENCES departments(dept_id) ON DELETE SET NULL
+) ENGINE=InnoDB;
+
+INSERT INTO `employees` (`first_name`, `middle_name`, `last_name`, `role`, `prc_license_no`, `hire_date`, `dept_id`, `email`, `contact_no`, `address`) VALUES
+('Juan', 'Ponce', 'Dela Cruz', 'HR', NULL, '2023-01-15', 1, 'juan.delacruz@hospital.ph', '09171234567', 'Paco, Manila'),
+('Maria Clara', 'Sotto', 'Santos', 'Doctor', '0123456', '2022-05-20', 2, 'mc.santos@hospital.ph', '09189876543', 'Quezon City'),
+('Rafael', 'Paeng', 'Reyes', 'FrontDesk', NULL, '2023-03-10', 3, 'paeng.reyes@hospital.ph', '09225551003', 'Mandaue City'),
+('Ricardo', 'Gomez', 'Garcia', 'Doctor', '0654321', '2021-11-02', 4, 'r.garcia@hospital.ph', '09084441004', 'Makati City'),
+('Angelica', 'P.', 'Pascual', 'HR', NULL, '2024-02-01', 1, 'a.pascual@hospital.ph', '09153332211', 'Pasig City');
+
+CREATE TABLE users (
+    user_id INT PRIMARY KEY AUTO_INCREMENT,
+    emp_id INT UNIQUE NOT NULL, 
+    username VARCHAR(50) UNIQUE NOT NULL,
+    password_hash VARCHAR(255) NOT NULL, -- Recommended for PHP password_hash()
+    access_role ENUM('HR', 'Doctor', 'FrontDesk') NOT NULL,
+    is_active BOOLEAN DEFAULT TRUE,
+    CONSTRAINT fk_user_employee FOREIGN KEY (emp_id) REFERENCES employees(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+INSERT INTO `users` (`emp_id`, `username`, `password_hash`, `access_role`) VALUES
+(6, 'juan.delacruz@hospital.ph', '$2y$10$8K9p/.n9U6v8NlXf0v0xueN5jH5S.WjG2F.M8A3H8k/1X8Z3.C7Q.', 'HR'),
+(7, 'mc.santos@hospital.ph', '$2y$10$8K9p/.n9U6v8NlXf0v0xueN5jH5S.WjG2F.M8A3H8k/1X8Z3.C7Q.', 'Doctor'),
+(8, 'paeng.reyes@hospital.ph', '$2y$10$8K9p/.n9U6v8NlXf0v0xueN5jH5S.WjG2F.M8A3H8k/1X8Z3.C7Q.', 'FrontDesk'),
+(9, 'r.garcia@hospital.ph', '$2y$10$8K9p/.n9U6v8NlXf0v0xueN5jH5S.WjG2F.M8A3H8k/1X8Z3.C7Q.', 'Doctor'),
+(10, 'a.pascual@hospital.ph', '$2y$10$8K9p/.n9U6v8NlXf0v0xueN5jH5S.WjG2F.M8A3H8k/1X8Z3.C7Q.', 'HR');
+
+CREATE TABLE schedules (
+    schedule_id INT PRIMARY KEY AUTO_INCREMENT,
+    emp_id INT NOT NULL,
+    day_of_week ENUM('Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday') NOT NULL,
+    shift_start TIME NOT NULL,
+    shift_end TIME NOT NULL,
+    CONSTRAINT fk_schedule_employee FOREIGN KEY (emp_id) REFERENCES employees(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+-- ==========================================
+-- II. PATIENT MANAGEMENT SYSTEM (PMS)
+-- ==========================================
+
+CREATE TABLE patients (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    -- Custom Formatted ID: PAT-001
+    patient_id_display VARCHAR(15) GENERATED ALWAYS AS (CONCAT('PAT-', LPAD(id, 3, '0'))) VIRTUAL,
+    first_name VARCHAR(50) NOT NULL,
+    last_name VARCHAR(50) NOT NULL,
+    email VARCHAR(50) NOT NULL UNIQUE,
+    address VARCHAR(200) NOT NULL,
+    dob DATE NOT NULL,
+    gender ENUM('Male', 'Female', 'Prefer not to say'),
+    contact_no VARCHAR(15),
+    blood_type ENUM('A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'),
+    emergency_contact_name VARCHAR(100) NOT NULL,
+    emergency_contact_number VARCHAR(15) NOT NULL,
+    date_registered DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB;
+
+INSERT INTO `patients` (`first_name`, `last_name`, `email`, `address`, `dob`, `gender`, `contact_no`, `blood_type`, `emergency_contact_name`, `emergency_contact_number`) VALUES
+('Gwyneth', 'Cataylo', 'g.cataylo@gmail.com', 'Calamba, Laguna', '1995-06-19', 'Female', '09112223333', 'O+', 'Teodora Cataylo', '09112223334'),
+('Nathan', 'Arcaya', 'nathan.a@gmail.com', 'Tarlac', '1998-04-11', 'Male', '09445556666', 'A+', 'Antonio Rivera', '09445556667'),
+('Emmanuel', 'Paje', 'emmanpaje@gmail.com', 'Tondo, Manila', '1992-11-30', 'Male', '09778889999', 'B+', 'Gregoria Paje', '09778889990');
+
+CREATE TABLE beds (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    bed_id_display VARCHAR(10) GENERATED ALWAYS AS (CONCAT('BED-', LPAD(id, 2, '0'))) VIRTUAL,
+    bed_number VARCHAR(10) UNIQUE NOT NULL,
+    ward_type ENUM('Ward', 'Semi-Private', 'Private', 'ICU') NOT NULL,
+    price_per_day DECIMAL(10,2) NOT NULL,
+    is_occupied BOOLEAN DEFAULT FALSE
+) ENGINE=InnoDB;
+
+INSERT INTO `beds` (`bed_number`, `ward_type`, `price_per_day`, `is_occupied`) VALUES
+('101-A', 'Ward', 500.00, 1),
+('202-B', 'Semi-Private', 1500.00, 0),
+('ICU-01', 'ICU', 8500.00, 1);
+
+CREATE TABLE appointments (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    appt_id_display VARCHAR(15) GENERATED ALWAYS AS (CONCAT('APT-', LPAD(id, 4, '0'))) VIRTUAL,
+    patient_id INT NOT NULL,
+    doctor_id INT NOT NULL, 
+    appt_date DATETIME NOT NULL,
+    visit_reason TEXT,
+    status ENUM('Pending', 'Completed', 'Cancelled') DEFAULT 'Pending',
+    CONSTRAINT fk_appt_patient FOREIGN KEY (patient_id) REFERENCES patients(id) ON DELETE CASCADE,
+    CONSTRAINT fk_appt_doctor FOREIGN KEY (doctor_id) REFERENCES employees(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+INSERT INTO `appointments` (`patient_id`, `doctor_id`, `appt_date`, `visit_reason`) VALUES
+(1, 2, '2024-03-01 10:00:00', 'Regular Checkup'),
+(2, 4, '2024-03-02 14:00:00', 'Fever and Cough');
+
+CREATE TABLE admissions (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    adm_id_display VARCHAR(15) GENERATED ALWAYS AS (CONCAT('ADM-', LPAD(id, 4, '0'))) VIRTUAL,
+    patient_id INT NOT NULL,
+    bed_id INT NOT NULL,
+    admit_date DATETIME DEFAULT CURRENT_TIMESTAMP,
+    discharge_date DATETIME NULL,
+    status ENUM('Active', 'Discharged') DEFAULT 'Active',
+    CONSTRAINT fk_adm_patient FOREIGN KEY (patient_id) REFERENCES patients(id) ON DELETE CASCADE,
+    CONSTRAINT fk_adm_bed FOREIGN KEY (bed_id) REFERENCES beds(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+INSERT INTO `admissions` (`patient_id`, `bed_id`, `status`) VALUES
+(1, 1, 'Active'),
+(3, 3, 'Active');
+
+-- ==========================================
+-- III. CLINICAL RECORDS & BILLING
+-- ==========================================
+
+CREATE TABLE medical_records (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    -- Custom Formatted ID: REC-0001
+    rec_id_display VARCHAR(15) GENERATED ALWAYS AS (CONCAT('REC-', LPAD(id, 4, '0'))) VIRTUAL,
+    patient_id INT NOT NULL,
+    doctor_id INT NOT NULL,
+    diagnosis TEXT,
+    treatment_plan TEXT,
+    care_type ENUM('Outpatient', 'Inpatient') NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_medical_patient FOREIGN KEY (patient_id) REFERENCES patients(id) ON DELETE CASCADE,
+    CONSTRAINT fk_medical_doctor FOREIGN KEY (doctor_id) REFERENCES employees(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+CREATE TABLE billing (
+    bill_id INT PRIMARY KEY AUTO_INCREMENT,
+    patient_id INT NOT NULL,
+    admission_id INT NULL, 
+    net_amount DECIMAL(10,2) NOT NULL,
+    payment_status ENUM('Pending', 'Paid') DEFAULT 'Pending',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_billing_patient FOREIGN KEY (patient_id) REFERENCES patients(id) ON DELETE CASCADE,
+    CONSTRAINT fk_billing_admission FOREIGN KEY (admission_id) REFERENCES admissions(id) ON DELETE SET NULL
+) ENGINE=InnoDB;
